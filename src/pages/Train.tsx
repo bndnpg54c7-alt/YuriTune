@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
+import { SiteHeader } from "@/components/SiteHeader";
 import { api } from "@/convex/_generated/api";
-import { useAuth } from "@/hooks/use-auth";
 import {
   DIFFICULTIES,
   WEEKDAYS,
@@ -14,7 +14,7 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import { motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useSearchParams } from "react-router";
 
 interface Stats {
   score: number;
@@ -26,11 +26,17 @@ interface Stats {
 
 const ZERO_STATS: Stats = { score: 0, streak: 0, bestStreak: 0, answered: 0, correct: 0 };
 
+function initialDifficulty(param: string | null): Difficulty {
+  return DIFFICULTIES.some((entry) => entry.id === param)
+    ? (param as Difficulty)
+    : "beginner";
+}
+
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="px-2 py-6 text-center">
       <p className="text-3xl font-semibold tabular-nums">{value}</p>
-      <p className="mt-1 text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
+      <p className="mt-1 font-mono text-[11px] tracking-[0.15em] text-muted-foreground uppercase">
         {label}
       </p>
     </div>
@@ -38,14 +44,17 @@ function Stat({ label, value }: { label: string; value: number }) {
 }
 
 export default function Train() {
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const serverStats = useQuery(api.quiz.getStats);
   const recordAnswer = useMutation(api.quiz.recordAnswer);
 
-  const [difficulty, setDifficulty] = useState<Difficulty>("beginner");
-  const [current, setCurrent] = useState<QuizDate>(() => randomDate("beginner"));
+  const [difficulty, setDifficulty] = useState<Difficulty>(() =>
+    initialDifficulty(searchParams.get("level")),
+  );
+  const [current, setCurrent] = useState<QuizDate>(() =>
+    randomDate(initialDifficulty(searchParams.get("level"))),
+  );
   const [selected, setSelected] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
   const [questionId, setQuestionId] = useState(0);
@@ -71,15 +80,12 @@ export default function Train() {
   const correct = weekdayOf(current);
   const isCorrect = selected === correct;
 
-  const nextQuestion = useCallback(
-    (target: Difficulty) => {
-      setCurrent(randomDate(target));
-      setSelected(null);
-      setAnswered(false);
-      setQuestionId((n) => n + 1);
-    },
-    [],
-  );
+  const nextQuestion = useCallback((target: Difficulty) => {
+    setCurrent(randomDate(target));
+    setSelected(null);
+    setAnswered(false);
+    setQuestionId((n) => n + 1);
+  }, []);
 
   const answer = useCallback(
     (index: number) => {
@@ -114,8 +120,8 @@ export default function Train() {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (!answered) {
-        const n = Number.parseInt(event.key, 10);
-        if (n >= 1 && n <= 7) answer(n - 1);
+        const digit = Number.parseInt(event.key, 10);
+        if (digit >= 1 && digit <= 7) answer(digit - 1);
       } else if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         nextQuestion(difficulty);
@@ -127,7 +133,7 @@ export default function Train() {
 
   function weekdayClass(index: number) {
     const base =
-      "flex h-14 items-center justify-center rounded-md border text-sm font-medium transition-colors duration-150";
+      "flex h-14 items-center justify-center rounded-md border font-mono text-sm font-medium transition-colors duration-150";
     if (!answered) {
       return `${base} border-border hover:border-foreground hover:bg-muted`;
     }
@@ -140,58 +146,39 @@ export default function Train() {
     return `${base} border-border text-muted-foreground opacity-40`;
   }
 
-  const active = DIFFICULTIES.find((d) => d.id === difficulty) ?? DIFFICULTIES[0];
+  const active = DIFFICULTIES.find((entry) => entry.id === difficulty) ?? DIFFICULTIES[0];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b">
-        <div className="mx-auto flex h-16 w-full max-w-2xl items-center justify-between px-6">
-          <Link
-            to="/"
-            className="text-sm font-semibold tracking-[0.35em] uppercase"
-          >
-            Doomsday
-          </Link>
-          <div className="flex items-center gap-4 text-sm">
-            <span className="hidden text-muted-foreground sm:inline">
-              {user?.email ?? user?.name ?? "convidado"}
-            </span>
-            <button
-              type="button"
-              onClick={async () => {
-                await signOut();
-                navigate("/");
-              }}
-              className="text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Sair
-            </button>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="mx-auto w-full max-w-2xl px-6 py-10">
+        <p className="font-mono text-xs text-[color:var(--brand)]">// doomsday</p>
+        <h1 className="mt-3 text-2xl font-semibold tracking-tight">
+          Dia da semana de qualquer data
+        </h1>
+
         {/* Difficulty */}
-        <div className="flex justify-center">
-          <div className="inline-flex rounded-md border p-1">
-            {DIFFICULTIES.map((d) => (
+        <div className="mt-8 flex justify-center">
+          <div className="inline-flex flex-wrap justify-center rounded-md border p-1">
+            {DIFFICULTIES.map((entry) => (
               <button
-                key={d.id}
+                key={entry.id}
                 type="button"
-                onClick={() => changeDifficulty(d.id)}
+                onClick={() => changeDifficulty(entry.id)}
                 className={
-                  "rounded px-4 py-2 text-xs font-medium transition-colors " +
-                  (d.id === difficulty
+                  "rounded px-4 py-2 font-mono text-xs transition-colors " +
+                  (entry.id === difficulty
                     ? "bg-foreground text-background"
                     : "text-muted-foreground hover:text-foreground")
                 }
               >
-                {d.label}
+                {entry.label}
               </button>
             ))}
           </div>
         </div>
-        <p className="mt-3 text-center text-xs tracking-[0.2em] text-muted-foreground uppercase">
+        <p className="mt-3 text-center font-mono text-xs text-muted-foreground">
           {active.range}
         </p>
 
@@ -203,8 +190,8 @@ export default function Train() {
         </div>
 
         {/* Date card */}
-        <div className="mt-12 rounded-xl border px-6 py-16 text-center">
-          <p className="text-xs tracking-[0.3em] text-muted-foreground uppercase">
+        <div className="mt-12 rounded-xl border bg-card px-6 py-16 text-center">
+          <p className="font-mono text-xs tracking-[0.25em] text-muted-foreground uppercase">
             Qual o dia da semana?
           </p>
           <motion.p
@@ -252,7 +239,7 @@ export default function Train() {
               </Button>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">
+            <p className="font-mono text-xs text-muted-foreground">
               Atalhos: teclas <span className="text-foreground">1–7</span> respondem ·{" "}
               <span className="text-foreground">Enter</span> avança
             </p>

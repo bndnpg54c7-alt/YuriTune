@@ -12,7 +12,9 @@ import "./index.css";
 // Lazy load route components for better code splitting
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
+const Catalog = lazy(() => import("./pages/Catalog.tsx"));
 const Train = lazy(() => import("./pages/Train.tsx"));
+const Music = lazy(() => import("./pages/Music.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -124,14 +126,26 @@ createRoot(document.getElementById("root")!).render(
                 path="/auth"
                 element={<AuthPage redirectAfterAuth="/train" />}
               />
+              <Route path="/catalog" element={<Catalog />} />
               <Route
                 path="/train"
                 element={
                   <RequireAuth
                     title="Entre para treinar"
-                    description="Seu placar, sequência e melhor resultado ficam salvos na sua conta."
+                    description="Seu placar, sequência e melhor resultado do Doomsday ficam salvos na sua conta."
                   >
                     <Train />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/music"
+                element={
+                  <RequireAuth
+                    title="Entre para treinar"
+                    description="Treine o reconhecimento de intervalos ouvindo cada exemplo pelo navegador."
+                  >
+                    <Music />
                   </RequireAuth>
                 }
               />
